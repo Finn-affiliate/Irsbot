@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRYPTEX — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#070a0f;color:#e0e6ed;font-family:'Barlow',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+.bg{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(0,230,118,0.05) 0%,transparent 70%);pointer-events:none}
+.card{background:#0d1117;border:1px solid rgba(0,230,118,0.15);border-radius:16px;padding:48px 40px;width:100%;max-width:400px;box-shadow:0 0 60px rgba(0,0,0,0.5)}
+.logo{text-align:center;margin-bottom:32px}
+.logo-text{font-family:'Share Tech Mono',monospace;font-size:28px;color:#00e676;letter-spacing:0.1em}
+.logo-sub{font-size:12px;color:#4a5568;margin-top:4px;letter-spacing:0.2em}
+.tabs{display:flex;gap:8px;margin-bottom:28px;background:#0a0e14;border-radius:8px;padding:4px}
+.tab{flex:1;padding:8px;text-align:center;border-radius:6px;cursor:pointer;font-size:13px;color:#6b7a8d;transition:all .2s}
+.tab.active{background:#00e676;color:#000;font-weight:500}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;color:#6b7a8d;margin-bottom:6px;letter-spacing:0.05em}
+.field input{width:100%;background:#0a0e14;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px 14px;color:#e0e6ed;font-size:14px;font-family:'Barlow',sans-serif;outline:none;transition:border .2s}
+.field input:focus{border-color:rgba(0,230,118,0.4)}
+.btn{width:100%;padding:14px;border-radius:8px;border:none;cursor:pointer;font-size:15px;font-weight:500;transition:all .2s;margin-top:8px;font-family:'Barlow',sans-serif}
+.btn-primary{background:#00e676;color:#000}
+.btn-primary:hover{background:#00ff88}
+.error{background:rgba(255,77,77,0.1);border:1px solid rgba(255,77,77,0.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#ff4d4d;margin-top:12px;display:none}
+.success{background:rgba(0,230,118,0.1);border:1px solid rgba(0,230,118,0.3);border-radius:8px;padding:10px 14px;font-size:13px;color:#00e676;margin-top:12px;display:none}
+.form-panel{display:none}
+.form-panel.active{display:block}
+.hint{font-size:11px;color:#4a5568;margin-top:12px;text-align:center;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="card">
+  <div class="logo">
+    <div class="logo-text">CRYPTEX</div>
+    <div class="logo-sub">GTA RP KRYPTO BÖRSE</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tab-login" onclick="setTab('login')">Einloggen</div>
+    <div class="tab" id="tab-register" onclick="setTab('register')">Registrieren</div>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="form-panel active" id="panel-login">
+    <div class="field">
+      <label>BENUTZERNAME</label>
+      <input type="text" id="login-user" placeholder="Dein Benutzername" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>PASSWORT</label>
+      <input type="password" id="login-pw" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary" onclick="login()">Einloggen</button>
+    <div style="display:flex;align-items:center;gap:12px;margin:16px 0">
+      <div style="flex:1;height:1px;background:rgba(255,255,255,0.07)"></div>
+      <div style="font-size:12px;color:#4a5568">ODER</div>
+      <div style="flex:1;height:1px;background:rgba(255,255,255,0.07)"></div>
+    </div>
+    <button class="btn" onclick="window.location='/discord/login'" style="background:#5865f2;color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:0">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+      Mit Discord einloggen
+    </button>
+    <div class="error" id="login-error"></div>
+  </div>
+
+  <!-- REGISTRIEREN -->
+  <div class="form-panel" id="panel-register">
+    <div class="field">
+      <label>BENUTZERNAME</label>
+      <input type="text" id="reg-user" placeholder="Gewünschter Benutzername" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>PASSWORT</label>
+      <input type="password" id="reg-pw" placeholder="••••••••">
+    </div>
+    <div class="field">
+      <label>PASSWORT WIEDERHOLEN</label>
+      <input type="password" id="reg-pw2" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary" onclick="register()">Konto erstellen</button>
+    <div class="error" id="reg-error"></div>
+    <div class="success" id="reg-success"></div>
+    <div class="hint">Nach der Registrierung muss ein Mitarbeiter Geld auf dein Konto einzahlen bevor du handeln kannst.</div>
+  </div>
+</div>
+
+<script>
+function setTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.form-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+async function login() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pw').value;
+  const err = document.getElementById('login-error');
+  err.style.display = 'none';
+  const r = await fetch('/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username, password})
+  });
+  const data = await r.json();
+  if (data.ok) {
+    window.location = data.rolle !== 'user' ? '/admin' : '/dashboard';
+  } else {
+    err.textContent = data.error || 'Fehler beim Einloggen';
+    err.style.display = 'block';
+  }
+}
+
+async function register() {
+  const username = document.getElementById('reg-user').value.trim();
+  const password = document.getElementById('reg-pw').value;
+  const password2 = document.getElementById('reg-pw2').value;
+  const err = document.getElementById('reg-error');
+  const ok_el = document.getElementById('reg-success');
+  err.style.display = 'none';
+  ok_el.style.display = 'none';
+
+  if (!username) { err.textContent = 'Bitte Benutzername eingeben.'; err.style.display = 'block'; return; }
+  if (username.length < 3) { err.textContent = 'Mindestens 3 Zeichen.'; err.style.display = 'block'; return; }
+  if (!password) { err.textContent = 'Bitte Passwort eingeben.'; err.style.display = 'block'; return; }
+  if (password.length < 4) { err.textContent = 'Passwort mindestens 4 Zeichen.'; err.style.display = 'block'; return; }
+  if (password !== password2) { err.textContent = 'Passwörter stimmen nicht überein.'; err.style.display = 'block'; return; }
+
+  const r = await fetch('/register', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username, password})
+  });
+  const data = await r.json();
+  if (data.ok) {
+    ok_el.textContent = '✅ Konto erstellt! Du kannst dich jetzt einloggen.';
+    ok_el.style.display = 'block';
+    document.getElementById('reg-user').value = '';
+    document.getElementById('reg-pw').value = '';
+    document.getElementById('reg-pw2').value = '';
+    setTimeout(() => setTab('login'), 2000);
+  } else {
+    err.textContent = data.error || 'Fehler bei der Registrierung';
+    err.style.display = 'block';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const active = document.querySelector('.form-panel.active').id;
+    if (active === 'panel-login') login();
+    else register();
+  }
+});
+</script>
+</body>
+</html>
