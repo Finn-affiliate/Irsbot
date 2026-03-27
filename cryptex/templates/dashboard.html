@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CRYPTEX</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#070a0f;color:#e0e6ed;font-family:'Barlow',sans-serif;min-height:100vh;overflow-x:hidden}
+.mono{font-family:'Share Tech Mono',monospace}
+
+/* NAV */
+nav{background:#0d1117;border-bottom:1px solid rgba(255,255,255,0.06);padding:0 16px;height:48px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-logo{font-family:'Share Tech Mono',monospace;color:#00e676;font-size:16px;letter-spacing:0.1em}
+.nav-right{display:flex;align-items:center;gap:8px}
+.nav-user{font-size:12px;color:#6b7a8d}
+.nav-btn{background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:5px 10px;color:#6b7a8d;font-size:12px;cursor:pointer;text-decoration:none}
+
+/* TICKER */
+.ticker{background:#0a0e14;border-bottom:1px solid rgba(255,255,255,0.05);padding:0 12px;height:36px;display:flex;align-items:center;gap:16px;overflow-x:auto;scrollbar-width:none}
+.ticker::-webkit-scrollbar{display:none}
+.tick-item{display:flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer;padding:3px 8px;border-radius:4px;transition:background .15s}
+.tick-item.active,.tick-item:hover{background:rgba(255,255,255,0.05)}
+.tick-sym{font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:500}
+.tick-price{font-family:'Share Tech Mono',monospace;font-size:11px;color:#6b7a8d}
+.tick-chg{font-size:10px;padding:1px 4px;border-radius:3px}
+.up{background:rgba(0,230,118,0.1);color:#00e676}
+.dn{background:rgba(255,77,77,0.1);color:#ff4d4d}
+
+/* KONTO BANNER */
+.konto-banner{background:#0d1117;border-bottom:1px solid rgba(255,255,255,0.06);padding:10px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.kb{text-align:center}
+.kb-label{font-size:10px;color:#4a5568;letter-spacing:0.05em;margin-bottom:2px}
+.kb-value{font-family:'Share Tech Mono',monospace;font-size:14px;font-weight:500}
+
+/* LAYOUT */
+.main{padding:12px 16px;max-width:1100px;margin:0 auto}
+
+/* COIN LIST */
+.section-title{font-size:11px;color:#4a5568;letter-spacing:0.1em;margin-bottom:10px}
+.coin-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.coin-item{background:#0d1117;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;cursor:pointer;transition:border-color .15s}
+.coin-item:hover{border-color:rgba(255,255,255,0.12)}
+.coin-item.active{border-color:rgba(0,230,118,0.5);background:rgba(0,230,118,0.03)}
+.coin-item.inactive{opacity:0.4;cursor:not-allowed}
+.ci-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.ci-sym{font-size:15px;font-weight:600;color:#e0e6ed}
+.ci-name{font-size:11px;color:#4a5568;margin-top:1px}
+.ci-price{font-family:'Share Tech Mono',monospace;font-size:15px;text-align:right}
+.ci-chg{font-size:11px;text-align:right;margin-top:1px}
+.ci-bottom{display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:10px}
+.ci-bid{color:#ff4d4d}
+.ci-ask{color:#00e676}
+.ci-mini{height:32px;margin-top:6px}
+
+/* CHART CARD */
+.chart-card{background:#0d1117;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;margin-bottom:16px;display:none}
+.chart-card.show{display:block}
+.chart-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.ct-name{font-size:15px;font-weight:500}
+.ct-sub{font-size:11px;color:#4a5568;margin-top:2px}
+.ct-price{font-family:'Share Tech Mono',monospace;font-size:24px;text-align:right}
+.ct-chg{font-size:12px;text-align:right;margin-top:2px}
+.chart-wrap{position:relative;height:150px;margin-bottom:12px}
+.bid-ask{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ba{padding:10px;border-radius:8px;text-align:center}
+.ba.bid{background:rgba(255,77,77,0.07);border:1px solid rgba(255,77,77,0.2)}
+.ba.ask{background:rgba(0,230,118,0.07);border:1px solid rgba(0,230,118,0.2)}
+.ba-label{font-size:10px;color:#6b7a8d;letter-spacing:0.05em;margin-bottom:3px}
+.ba-price{font-family:'Share Tech Mono',monospace;font-size:16px}
+.ba-price.bid-p{color:#ff4d4d}
+.ba-price.ask-p{color:#00e676}
+.ba-hint{font-size:10px;color:#4a5568;margin-top:2px}
+
+/* ORDER SECTION */
+.order-section{background:#0d1117;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;margin-bottom:16px;display:none}
+.order-section.show{display:block}
+
+/* DIR TABS */
+.dir-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px}
+.dir-tab{padding:10px;text-align:center;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;border:1px solid rgba(255,255,255,0.08);color:#6b7a8d;transition:all .2s}
+.dir-tab.buy-active{background:rgba(0,230,118,0.15);border-color:rgba(0,230,118,0.5);color:#00e676}
+.dir-tab.sell-active{background:rgba(255,77,77,0.15);border-color:rgba(255,77,77,0.5);color:#ff4d4d}
+
+/* ORDER TYPE SELECTOR */
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.type-card{border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;cursor:pointer;transition:all .2s;background:#0a0e14}
+.type-card:hover{border-color:rgba(255,255,255,0.2)}
+.type-card.active{border-color:rgba(0,230,118,0.5);background:rgba(0,230,118,0.05)}
+.type-card.active.sell-mode{border-color:rgba(255,77,77,0.5);background:rgba(255,77,77,0.05)}
+.tc-name{font-size:13px;font-weight:500;margin-bottom:4px}
+.tc-desc{font-size:11px;color:#6b7a8d;line-height:1.4}
+.tc-badge{display:inline-block;font-size:9px;padding:2px 6px;border-radius:3px;margin-bottom:6px;letter-spacing:0.05em}
+.badge-easy{background:rgba(0,230,118,0.1);color:#00e676}
+.badge-med{background:rgba(250,200,0,0.1);color:#fac800}
+.badge-adv{background:rgba(255,77,77,0.1);color:#ff4d4d}
+
+/* ORDER FORM */
+.order-form{background:#0a0e14;border-radius:8px;padding:12px;margin-bottom:12px}
+.form-title{font-size:12px;font-weight:500;margin-bottom:10px;color:#e0e6ed}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:11px;color:#6b7a8d;margin-bottom:4px;letter-spacing:0.03em}
+.field input{width:100%;background:#070a0f;border:1px solid rgba(255,255,255,0.08);border-radius:7px;padding:10px 12px;color:#e0e6ed;font-size:14px;font-family:'Share Tech Mono',monospace;outline:none;-webkit-appearance:none}
+.field input:focus{border-color:rgba(0,230,118,0.4)}
+.field .hint{font-size:10px;color:#4a5568;margin-top:3px;line-height:1.4}
+.total-box{background:#070a0f;border:1px solid rgba(255,255,255,0.06);border-radius:7px;padding:10px 12px;margin-bottom:12px}
+.total-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.total-row:last-child{margin-bottom:0;font-size:13px;font-weight:500}
+.total-label{color:#6b7a8d}
+.total-value{font-family:'Share Tech Mono',monospace}
+.submit-btn{width:100%;padding:13px;border-radius:8px;border:none;cursor:pointer;font-size:15px;font-weight:600;font-family:'Barlow',sans-serif;letter-spacing:0.03em;transition:all .2s}
+.submit-btn.buy{background:#00e676;color:#000}
+.submit-btn.buy:hover{background:#00ff88}
+.submit-btn.sell{background:#ff4d4d;color:#fff}
+.submit-btn.sell:hover{background:#ff6666}
+
+/* DEPOT */
+.depot-card{background:#0d1117;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;margin-bottom:16px}
+.depot-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.depot-row:last-child{border-bottom:none}
+.dr-sym{font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:500}
+.dr-menge{font-size:11px;color:#6b7a8d;margin-top:2px}
+.dr-wert{font-family:'Share Tech Mono',monospace;font-size:13px;text-align:right}
+.dr-pnl{font-size:11px;text-align:right;margin-top:2px}
+
+/* ORDERS */
+.order-row{background:#0a0e14;border-radius:7px;padding:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.or-dir{font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:500}
+.or-info{font-size:11px;color:#6b7a8d;margin-top:2px}
+.cancel-btn{background:rgba(255,77,77,0.1);border:1px solid rgba(255,77,77,0.3);color:#ff4d4d;border-radius:5px;padding:6px 10px;cursor:pointer;font-size:11px;white-space:nowrap;flex-shrink:0}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(120px);background:#0d1117;border:1px solid rgba(0,230,118,0.4);border-radius:10px;padding:12px 20px;font-size:13px;z-index:999;transition:transform .3s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.err{border-color:rgba(255,77,77,0.4);color:#ff4d4d}
+
+/* MODAL OVERLAY für Order-Typen Info */
+.info-modal{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.info-modal.show{display:flex}
+.info-box{background:#0d1117;border:1px solid rgba(255,255,255,0.1);border-radius:16px 16px 0 0;padding:20px;width:100%;max-width:500px;max-height:80vh;overflow-y:auto}
+.info-close{float:right;background:none;border:none;color:#6b7a8d;font-size:20px;cursor:pointer;padding:0 4px}
+.info-title{font-size:16px;font-weight:600;margin-bottom:12px}
+.info-item{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.info-item:last-child{border-bottom:none;margin-bottom:0}
+.info-item-name{font-size:13px;font-weight:500;margin-bottom:4px}
+.info-item-desc{font-size:12px;color:#6b7a8d;line-height:1.6}
+
+/* DESKTOP */
+@media(min-width:768px){
+  .main{display:grid;grid-template-columns:1fr 340px;gap:16px;padding:16px 20px}
+  .left-col{}
+  .right-col{}
+  .coin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">CRYPTEX</div>
+  <div class="nav-right">
+    <span class="nav-user">{{ username }}</span>
+    {% if rolle != 'user' %}<a href="/admin" class="nav-btn">Admin</a>{% endif %}
+    <button class="nav-btn" onclick="showInfo()">?</button>
+    <a href="/logout" class="nav-btn">Logout</a>
+  </div>
+</nav>
+
+<div class="ticker" id="ticker"></div>
+
+<div class="konto-banner">
+  <div class="kb"><div class="kb-label">CASH</div><div class="kb-value mono up" id="k-cash">—</div></div>
+  <div class="kb"><div class="kb-label">DEPOT-WERT</div><div class="kb-value mono" id="k-depot">—</div></div>
+  <div class="kb"><div class="kb-label">GESAMT</div><div class="kb-value mono" id="k-gesamt">—</div></div>
+</div>
+
+<div class="main">
+  <div class="left-col">
+
+    <!-- MARKT -->
+    <div class="section-title">MARKTÜBERSICHT — Coin auswählen zum Handeln</div>
+    <div class="coin-grid" id="coinGrid"></div>
+
+    <!-- CHART -->
+    <div class="chart-card" id="chartCard">
+      <div class="chart-top">
+        <div>
+          <div class="ct-name" id="ct-name">—</div>
+          <div class="ct-sub">Preisverlauf</div>
+        </div>
+        <div>
+          <div class="ct-price mono" id="ct-price">—</div>
+          <div class="ct-chg" id="ct-chg">—</div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+      <div class="bid-ask">
+        <div class="ba bid">
+          <div class="ba-label">GELDKURS (BID)</div>
+          <div class="ba-price bid-p mono" id="ba-bid">—</div>
+          <div class="ba-hint">Du verkaufst zu diesem Preis</div>
+        </div>
+        <div class="ba ask">
+          <div class="ba-label">BRIEFKURS (ASK)</div>
+          <div class="ba-price ask-p mono" id="ba-ask">—</div>
+          <div class="ba-hint">Du kaufst zu diesem Preis</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDER SECTION -->
+    <div class="order-section" id="orderSection">
+
+      <!-- KAUFEN / VERKAUFEN -->
+      <div class="dir-tabs">
+        <div class="dir-tab buy-active" id="dir-buy" onclick="setDir('kauf')">📈 KAUFEN</div>
+        <div class="dir-tab" id="dir-sell" onclick="setDir('verkauf')">📉 VERKAUFEN</div>
+      </div>
+
+      <!-- ORDER TYP AUSWAHL -->
+      <div class="section-title">ORDER-TYP WÄHLEN</div>
+      <div class="type-grid" id="typeGrid">
+
+        <div class="type-card active" id="type-market" onclick="setTyp('market')">
+          <div class="tc-badge badge-easy">EINFACH</div>
+          <div class="tc-name">Market Order</div>
+          <div class="tc-desc">Kauft/Verkauft sofort zum aktuellen Marktpreis. Schnell und einfach.</div>
+        </div>
+
+        <div class="type-card" id="type-limit" onclick="setTyp('limit')">
+          <div class="tc-badge badge-med">MITTEL</div>
+          <div class="tc-name">Limit Order</div>
+          <div class="tc-desc">Du setzt deinen Wunschpreis. Wird nur ausgeführt wenn der Markt diesen Preis erreicht.</div>
+        </div>
+
+        <div class="type-card" id="type-stop" onclick="setTyp('stop')">
+          <div class="tc-badge badge-med">MITTEL</div>
+          <div class="tc-name">Stop Order</div>
+          <div class="tc-desc">Wird zur Market Order sobald ein Stop-Preis erreicht wird. Gut zum Absichern.</div>
+        </div>
+
+        <div class="type-card" id="type-stoplimit" onclick="setTyp('stoplimit')">
+          <div class="tc-badge badge-adv">FORTGESCHRITTEN</div>
+          <div class="tc-name">Stop-Limit</div>
+          <div class="tc-desc">Kombination: Ab Stop-Preis wird eine Limit Order aktiv. Maximale Kontrolle.</div>
+        </div>
+
+      </div>
+
+      <!-- FORMULAR -->
+      <div class="order-form" id="orderForm">
+        <div class="form-title" id="form-title">Market Order — Sofortkauf zum Marktpreis</div>
+
+        <div class="field">
+          <label>MENGE (<span id="field-coin">BTC</span>)</label>
+          <input type="number" id="f-menge" placeholder="0.00000" min="0" step="any" inputmode="decimal" oninput="calcTotal()">
+          <div class="hint">Wie viele Coins möchtest du kaufen?</div>
+        </div>
+
+        <div class="field" id="field-limit" style="display:none">
+          <label>LIMIT-PREIS ($)</label>
+          <input type="number" id="f-limit" placeholder="0.00" min="0" step="any" inputmode="decimal" oninput="calcTotal()">
+          <div class="hint" id="hint-limit">Die Order wird nur ausgeführt wenn der Preis diesen Wert erreicht.</div>
+        </div>
+
+        <div class="field" id="field-stop" style="display:none">
+          <label>STOP-PREIS ($)</label>
+          <input type="number" id="f-stop" placeholder="0.00" min="0" step="any" inputmode="decimal" oninput="calcTotal()">
+          <div class="hint" id="hint-stop">Ab diesem Preis wird die Order ausgelöst.</div>
+        </div>
+
+        <div class="total-box">
+          <div class="total-row">
+            <span class="total-label">Aktueller Preis</span>
+            <span class="total-value mono" id="t-aktuell">—</span>
+          </div>
+          <div class="total-row">
+            <span class="total-label">Menge</span>
+            <span class="total-value mono" id="t-menge">—</span>
+          </div>
+          <div class="total-row">
+            <span class="total-label">Geschätzter Gesamtbetrag</span>
+            <span class="total-value mono" id="t-total">$0.00</span>
+          </div>
+        </div>
+
+        <button class="submit-btn buy" id="submit-btn" onclick="placeOrder()">ORDER PLATZIEREN</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="right-col">
+
+    <!-- DEPOT -->
+    <div class="depot-card">
+      <div class="section-title">MEIN DEPOT</div>
+      <div id="depotList">
+        <div style="font-size:12px;color:#4a5568;text-align:center;padding:12px">Keine Positionen vorhanden</div>
+      </div>
+    </div>
+
+    <!-- OFFENE ORDERS -->
+    <div class="depot-card">
+      <div class="section-title">OFFENE ORDERS</div>
+      <div id="orderList">
+        <div style="font-size:12px;color:#4a5568;text-align:center;padding:12px">Keine offenen Orders</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- INFO MODAL -->
+<div class="info-modal" id="infoModal" onclick="hideInfo(event)">
+  <div class="info-box">
+    <button class="info-close" onclick="document.getElementById('infoModal').classList.remove('show')">✕</button>
+    <div class="info-title">📖 Order-Typen erklärt</div>
+    <div class="info-item">
+      <div class="info-item-name">🟢 Market Order — Einfach</div>
+      <div class="info-item-desc">Kauft oder verkauft sofort zum aktuellen Marktpreis. Ideal für Einsteiger. Du weißt nicht genau welchen Preis du bekommst, aber die Order wird garantiert ausgeführt.</div>
+    </div>
+    <div class="info-item">
+      <div class="info-item-name">🟡 Limit Order — Mittel</div>
+      <div class="info-item-desc">Du legst selbst fest zu welchem Preis du kaufen oder verkaufen möchtest. Die Order wartet bis der Markt diesen Preis erreicht. Wird nicht ausgeführt wenn der Preis nie erreicht wird.</div>
+    </div>
+    <div class="info-item">
+      <div class="info-item-name">🟠 Stop Order — Mittel</div>
+      <div class="info-item-desc">Sobald der Marktpreis den Stop-Preis erreicht, wird automatisch eine Market Order ausgelöst. Wird oft verwendet um Verluste zu begrenzen (Stop-Loss).</div>
+    </div>
+    <div class="info-item">
+      <div class="info-item-name">🔴 Stop-Limit Order — Fortgeschritten</div>
+      <div class="info-item-desc">Kombination aus Stop und Limit. Sobald der Stop-Preis erreicht wird, wird eine Limit Order zum angegebenen Limit-Preis platziert. Maximale Kontrolle über den Ausführungspreis.</div>
+    </div>
+    <div class="info-item">
+      <div class="info-item-name">📊 Bid/Ask erklärt</div>
+      <div class="info-item-desc"><b>Geldkurs (Bid)</b>: Der Preis zu dem du verkaufen kannst.<br><b>Briefkurs (Ask)</b>: Der Preis zu dem du kaufen kannst.<br>Die Differenz nennt sich <b>Spread</b> — das ist der Broker-Gewinn.</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const socket = io();
+let marktData = {};
+let selectedCoin = null;
+let orderDir = 'kauf';
+let orderTyp = 'market';
+let mainChart = null;
+let miniCharts = {};
+
+function fp(n) {
+  if (n === null || n === undefined || isNaN(n)) return '$—';
+  if (n >= 1000) return '$' + n.toLocaleString('de-CH', {minimumFractionDigits:0,maximumFractionDigits:0});
+  if (n >= 1) return '$' + n.toFixed(2);
+  return '$' + n.toFixed(4);
+}
+
+function showToast(msg, err=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (err?' err':'');
+  setTimeout(() => t.className='toast', 3500);
+}
+
+function showInfo() { document.getElementById('infoModal').classList.add('show'); }
+function hideInfo(e) { if(e.target.id==='infoModal') document.getElementById('infoModal').classList.remove('show'); }
+
+socket.on('markt_update', data => {
+  marktData = data;
+  renderTicker();
+  renderCoins();
+  if (selectedCoin) updateDetail();
+});
+socket.on('konto_update', () => loadKonto());
+socket.on('order_update', () => { loadKonto(); loadOrders(); });
+
+function renderTicker() {
+  document.getElementById('ticker').innerHTML = Object.entries(marktData).map(([sym, m]) => {
+    const h = m.history || [];
+    const chg = h.length > 1 ? ((h[h.length-1]-h[0])/h[0]*100) : 0;
+    return `<div class="tick-item ${sym===selectedCoin?'active':''}" onclick="selectCoin('${sym}')">
+      <span class="tick-sym">${sym}</span>
+      <span class="tick-price">${fp(m.letzter)}</span>
+      <span class="tick-chg ${chg>=0?'up':'dn'}">${chg>=0?'+':''}${chg.toFixed(1)}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderCoins() {
+  document.getElementById('coinGrid').innerHTML = Object.entries(marktData).map(([sym, m]) => {
+    const h = m.history || [];
+    const chg = h.length > 1 ? ((h[h.length-1]-h[0])/h[0]*100) : 0;
+    const cls = chg >= 0 ? 'up' : 'dn';
+    return `<div class="coin-item ${sym===selectedCoin?'active':''} ${!m.aktiv?'inactive':''}" onclick="${m.aktiv?`selectCoin('${sym}')`:''}">
+      <div class="ci-top">
+        <div>
+          <div class="ci-sym">${sym}</div>
+          <div class="ci-name">${m.name||sym}</div>
+        </div>
+        <div>
+          <div class="ci-price mono">${fp(m.letzter)}</div>
+          <div class="ci-chg ${cls}">${chg>=0?'+':''}${chg.toFixed(2)}%</div>
+        </div>
+      </div>
+      <div class="ci-bottom">
+        <span class="ci-bid">Bid ${fp(m.bid)}</span>
+        <span class="ci-ask">Ask ${fp(m.ask)}</span>
+      </div>
+      <div class="ci-mini"><canvas id="mini_${sym}"></canvas></div>
+      ${!m.aktiv?'<div style="font-size:10px;color:#ff4d4d;margin-top:4px;text-align:center">DEAKTIVIERT</div>':''}
+    </div>`;
+  }).join('');
+
+  Object.entries(marktData).forEach(([sym, m]) => {
+    const canvas = document.getElementById('mini_'+sym);
+    if (!canvas) return;
+    if (miniCharts[sym]) miniCharts[sym].destroy();
+    const h = m.history || [];
+    const chg = h.length > 1 ? ((h[h.length-1]-h[0])/h[0]*100) : 0;
+    miniCharts[sym] = new Chart(canvas, {
+      type: 'line',
+      data: { labels: h.map((_,i)=>i), datasets: [{ data: h, borderColor: chg>=0?'#00e676':'#ff4d4d', borderWidth: 1.5, pointRadius: 0, tension: 0.3 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}}, animation:false }
+    });
+  });
+}
+
+function selectCoin(sym) {
+  if (!marktData[sym] || !marktData[sym].aktiv) return;
+  selectedCoin = sym;
+  document.getElementById('field-coin').textContent = sym;
+  renderTicker();
+  renderCoins();
+  document.getElementById('chartCard').className = 'chart-card show';
+  document.getElementById('orderSection').className = 'order-section show';
+  updateDetail();
+  initMainChart();
+  calcTotal();
+  document.getElementById('chartCard').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function updateDetail() {
+  if (!selectedCoin || !marktData[selectedCoin]) return;
+  const m = marktData[selectedCoin];
+  const h = m.history || [];
+  const chg = h.length > 1 ? ((h[h.length-1]-h[0])/h[0]*100) : 0;
+  document.getElementById('ct-name').textContent = `${selectedCoin} — ${m.name||selectedCoin}`;
+  document.getElementById('ct-price').textContent = fp(m.letzter);
+  const chgEl = document.getElementById('ct-chg');
+  chgEl.textContent = `${chg>=0?'+':''}${chg.toFixed(2)}%`;
+  chgEl.style.color = chg >= 0 ? '#00e676' : '#ff4d4d';
+  document.getElementById('ba-bid').textContent = fp(m.bid);
+  document.getElementById('ba-ask').textContent = fp(m.ask);
+  if (mainChart) {
+    mainChart.data.labels = h.map((_,i)=>i);
+    mainChart.data.datasets[0].data = h;
+    const color = chg >= 0 ? '#00e676' : '#ff4d4d';
+    mainChart.data.datasets[0].borderColor = color;
+    mainChart.data.datasets[0].backgroundColor = color+'0d';
+    mainChart.update('none');
+  }
+  calcTotal();
+}
+
+function initMainChart() {
+  if (mainChart) mainChart.destroy();
+  const m = marktData[selectedCoin];
+  if (!m) return;
+  const h = m.history || [];
+  const chg = h.length > 1 ? ((h[h.length-1]-h[0])/h[0]*100) : 0;
+  const color = chg >= 0 ? '#00e676' : '#ff4d4d';
+  mainChart = new Chart(document.getElementById('mainChart'), {
+    type: 'line',
+    data: { labels: h.map((_,i)=>i), datasets: [{ data: h, borderColor: color, backgroundColor: color+'0d', borderWidth: 2, pointRadius: 0, tension: 0.3, fill: true }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { display: false }, y: { display: true, position: 'right', ticks: { color: '#4a5568', font: { size: 9 }, callback: v => fp(v) }, grid: { color: 'rgba(255,255,255,0.04)' } } },
+      animation: { duration: 200 }
+    }
+  });
+}
+
+function setDir(dir) {
+  orderDir = dir;
+  document.getElementById('dir-buy').className = 'dir-tab' + (dir==='kauf'?' buy-active':'');
+  document.getElementById('dir-sell').className = 'dir-tab' + (dir==='verkauf'?' sell-active':'');
+  const btn = document.getElementById('submit-btn');
+  btn.className = 'submit-btn ' + (dir==='kauf'?'buy':'sell');
+
+  // Update type cards sell mode
+  document.querySelectorAll('.type-card').forEach(c => {
+    if (c.classList.contains('active')) {
+      if (dir==='verkauf') c.classList.add('sell-mode');
+      else c.classList.remove('sell-mode');
+    }
+  });
+
+  updateFormLabels();
+  calcTotal();
+}
+
+function setTyp(typ) {
+  orderTyp = typ;
+  document.querySelectorAll('.type-card').forEach(c => {
+    c.classList.remove('active','sell-mode');
+  });
+  const card = document.getElementById('type-'+typ);
+  card.classList.add('active');
+  if (orderDir === 'verkauf') card.classList.add('sell-mode');
+  updateFormLabels();
+  calcTotal();
+}
+
+function updateFormLabels() {
+  const m = marktData[selectedCoin];
+  const isBuy = orderDir === 'kauf';
+
+  const titles = {
+    market:    isBuy ? 'Market Order — Sofortkauf zum Marktpreis' : 'Market Order — Sofortverkauf zum Marktpreis',
+    limit:     isBuy ? 'Limit Order — Kaufen wenn Preis sinkt' : 'Limit Order — Verkaufen wenn Preis steigt',
+    stop:      isBuy ? 'Stop Order — Kaufen wenn Preis steigt (Ausbruch)' : 'Stop Order — Verkaufen wenn Preis fällt (Stop-Loss)',
+    stoplimit: isBuy ? 'Stop-Limit — Kontrollierter Kauf ab Stop-Preis' : 'Stop-Limit — Kontrollierter Verkauf ab Stop-Preis',
+  };
+  document.getElementById('form-title').textContent = titles[orderTyp];
+
+  // Felder anzeigen/verstecken
+  document.getElementById('field-limit').style.display = (orderTyp==='limit'||orderTyp==='stoplimit') ? 'block' : 'none';
+  document.getElementById('field-stop').style.display = (orderTyp==='stop'||orderTyp==='stoplimit') ? 'block' : 'none';
+
+  // Hints anpassen
+  if (orderTyp === 'limit') {
+    document.getElementById('hint-limit').textContent = isBuy
+      ? 'Kauft nur wenn der Preis auf diesen Wert oder tiefer fällt.'
+      : 'Verkauft nur wenn der Preis auf diesen Wert oder höher steigt.';
+  }
+  if (orderTyp === 'stop') {
+    document.getElementById('hint-stop').textContent = isBuy
+      ? 'Kauft sobald der Preis diesen Wert überschreitet.'
+      : 'Verkauft sobald der Preis unter diesen Wert fällt.';
+  }
+  if (orderTyp === 'stoplimit') {
+    document.getElementById('hint-stop').textContent = 'Sobald dieser Preis erreicht wird, wird die Limit Order aktiv.';
+    document.getElementById('hint-limit').textContent = 'Zu diesem Preis wird dann die Order platziert.';
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.className = 'submit-btn ' + (isBuy?'buy':'sell');
+  btn.textContent = isBuy ? `${orderTyp.toUpperCase()} KAUFEN` : `${orderTyp.toUpperCase()} VERKAUFEN`;
+}
+
+function calcTotal() {
+  if (!selectedCoin || !marktData[selectedCoin]) return;
+  const m = marktData[selectedCoin];
+  const menge = parseFloat(document.getElementById('f-menge').value) || 0;
+  let preis;
+  if (orderTyp === 'market') {
+    preis = orderDir === 'kauf' ? m.ask : m.bid;
+  } else if (orderTyp === 'limit' || orderTyp === 'stoplimit') {
+    preis = parseFloat(document.getElementById('f-limit').value) || (orderDir==='kauf' ? m.ask : m.bid);
+  } else {
+    preis = parseFloat(document.getElementById('f-stop').value) || m.letzter;
+  }
+  document.getElementById('t-aktuell').textContent = fp(orderDir==='kauf' ? m.ask : m.bid);
+  document.getElementById('t-menge').textContent = menge > 0 ? `${menge} ${selectedCoin}` : '—';
+  document.getElementById('t-total').textContent = menge > 0 ? fp(menge * preis) : '$0.00';
+}
+
+async function placeOrder() {
+  if (!selectedCoin) return;
+  const menge = parseFloat(document.getElementById('f-menge').value);
+  if (!menge || menge <= 0) { showToast('Bitte Menge eingeben', true); return; }
+
+  const body = { coin: selectedCoin, richtung: orderDir, menge };
+
+  if (orderTyp === 'market') {
+    body.typ = 'market';
+  } else if (orderTyp === 'limit') {
+    body.typ = 'limit';
+    const lp = parseFloat(document.getElementById('f-limit').value);
+    if (!lp || lp <= 0) { showToast('Bitte Limit-Preis eingeben', true); return; }
+    body.limit_preis = lp;
+  } else if (orderTyp === 'stop') {
+    body.typ = 'stop';
+    const sp = parseFloat(document.getElementById('f-stop').value);
+    if (!sp || sp <= 0) { showToast('Bitte Stop-Preis eingeben', true); return; }
+    body.stop_preis = sp;
+  } else if (orderTyp === 'stoplimit') {
+    body.typ = 'stoplimit';
+    const sp = parseFloat(document.getElementById('f-stop').value);
+    const lp = parseFloat(document.getElementById('f-limit').value);
+    if (!sp || sp <= 0) { showToast('Bitte Stop-Preis eingeben', true); return; }
+    if (!lp || lp <= 0) { showToast('Bitte Limit-Preis eingeben', true); return; }
+    body.stop_preis = sp;
+    body.limit_preis = lp;
+  }
+
+  const r = await fetch('/api/order', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const data = await r.json();
+  if (data.ok) {
+    showToast(`✅ Order erfolgreich platziert!`);
+    document.getElementById('f-menge').value = '';
+    document.getElementById('f-limit').value = '';
+    document.getElementById('f-stop').value = '';
+    loadKonto();
+    loadOrders();
+  } else {
+    showToast(data.error || 'Fehler beim Platzieren', true);
+  }
+}
+
+async function loadKonto() {
+  const r = await fetch('/api/konto');
+  const d = await r.json();
+  document.getElementById('k-cash').textContent = fp(d.cash);
+  document.getElementById('k-depot').textContent = fp(d.depot_wert);
+  document.getElementById('k-gesamt').textContent = fp(d.gesamt);
+
+  const el = document.getElementById('depotList');
+  if (!d.depot || d.depot.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:#4a5568;text-align:center;padding:12px">Keine Positionen vorhanden</div>';
+  } else {
+    el.innerHTML = d.depot.map(p => {
+      const cls = p.gewinn >= 0 ? 'up' : 'dn';
+      return `<div class="depot-row">
+        <div>
+          <div class="dr-sym">${p.coin}</div>
+          <div class="dr-menge">${p.menge.toFixed(6)} ${p.coin}</div>
+        </div>
+        <div>
+          <div class="dr-wert mono">${fp(p.wert)}</div>
+          <div class="dr-pnl ${cls}">${p.gewinn>=0?'+':''}${fp(p.gewinn)}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+async function loadOrders() {
+  const r = await fetch('/api/orders');
+  const d = await r.json();
+  const el = document.getElementById('orderList');
+  if (!d.offen || d.offen.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:#4a5568;text-align:center;padding:12px">Keine offenen Orders</div>';
+    return;
+  }
+  el.innerHTML = d.offen.map(o => {
+    const typLabel = {market:'Market',limit:'Limit',stop:'Stop',stoplimit:'Stop-Limit'}[o.typ]||o.typ;
+    const dirCls = o.richtung==='kauf' ? 'ask' : 'bid';
+    return `<div class="order-row">
+      <div style="flex:1;min-width:0">
+        <div class="or-dir ${dirCls}">${o.richtung.toUpperCase()} ${o.coin} — ${typLabel}</div>
+        <div class="or-info">${o.menge} ${o.coin} | ${o.limit_preis?'Limit: '+fp(o.limit_preis):''} ${o.stop_preis?'Stop: '+fp(o.stop_preis):''} [${o.status}]</div>
+      </div>
+      <button class="cancel-btn" onclick="cancelOrder(${o.id})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function cancelOrder(id) {
+  const r = await fetch(`/api/order/${id}/cancel`, {method:'POST'});
+  const d = await r.json();
+  if (d.ok) { showToast('Order storniert'); loadKonto(); loadOrders(); }
+  else showToast(d.error, true);
+}
+
+// Init
+fetch('/api/markt').then(r=>r.json()).then(d => {
+  marktData = d;
+  renderTicker();
+  renderCoins();
+  loadKonto();
+  loadOrders();
+});
+
+setInterval(() => { loadKonto(); loadOrders(); }, 30000);
+</script>
+</body>
+</html>
