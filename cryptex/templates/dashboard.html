@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CRYPTEX</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#070a0f;color:#e0e6ed;font-family:'Barlow',sans-serif;min-height:100vh}
+nav{background:#0d1117;border-bottom:1px solid rgba(255,255,255,0.06);padding:0 16px;height:48px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.logo{font-family:'Share Tech Mono',monospace;color:#00e676;font-size:16px}
+.nav-right{display:flex;gap:8px;align-items:center}
+.nav-user{font-size:12px;color:#6b7a8d}
+a.btn,button.btn{background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:5px 10px;color:#6b7a8d;font-size:12px;cursor:pointer;text-decoration:none;font-family:'Barlow',sans-serif}
+
+/* KONTO BANNER */
+.konto-bar{background:#0d1117;border-bottom:1px solid rgba(255,255,255,0.06);padding:10px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.kb{text-align:center}
+.kb-l{font-size:10px;color:#4a5568;margin-bottom:2px}
+.kb-v{font-family:'Share Tech Mono',monospace;font-size:14px;font-weight:500}
+
+.main{padding:12px 16px;max-width:1100px;margin:0 auto}
+
+/* COINS */
+.sec-title{font-size:11px;color:#4a5568;letter-spacing:0.1em;margin-bottom:10px}
+.coins{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.coin{background:#0d1117;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;cursor:pointer;transition:border-color .15s}
+.coin:hover,.coin.active{border-color:rgba(0,230,118,0.4)}
+.coin-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.coin-sym{font-size:15px;font-weight:600}
+.coin-name{font-size:11px;color:#4a5568;margin-top:1px}
+.coin-price{font-family:'Share Tech Mono',monospace;font-size:15px;text-align:right}
+.coin-chg{font-size:11px;text-align:right;margin-top:1px}
+.coin-ba{display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:10px}
+.bid{color:#ff4d4d}.ask{color:#00e676}
+.up{color:#00e676}.dn{color:#ff4d4d}
+.mini{height:32px;margin-top:6px}
+
+/* CHART */
+.chart-box{background:#0d1117;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;margin-bottom:16px;display:none}
+.chart-box.show{display:block}
+.chart-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.chart-name{font-size:15px;font-weight:500}
+.chart-price{font-family:'Share Tech Mono',monospace;font-size:22px;text-align:right}
+.chart-chg{font-size:12px;text-align:right;margin-top:2px}
+.chart-wrap{position:relative;height:150px;margin-bottom:12px}
+.ba-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ba-box{padding:10px;border-radius:8px;text-align:center}
+.ba-bid{background:rgba(255,77,77,0.07);border:1px solid rgba(255,77,77,0.2)}
+.ba-ask{background:rgba(0,230,118,0.07);border:1px solid rgba(0,230,118,0.2)}
+.ba-l{font-size:10px;color:#6b7a8d;margin-bottom:3px}
+.ba-p{font-family:'Share Tech Mono',monospace;font-size:16px}
+.ba-hint{font-size:10px;color:#4a5568;margin-top:2px}
+
+/* TRADE FORM */
+.trade-box{background:#0d1117;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;margin-bottom:16px;display:none}
+.trade-box.show{display:block}
+.dir-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px}
+.dir{padding:10px;text-align:center;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;border:1px solid rgba(255,255,255,0.08);color:#6b7a8d;transition:all .2s}
+.dir.buy-on{background:rgba(0,230,118,0.15);border-color:rgba(0,230,118,0.5);color:#00e676}
+.dir.sell-on{background:rgba(255,77,77,0.15);border-color:rgba(255,77,77,0.5);color:#ff4d4d}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;color:#6b7a8d;margin-bottom:4px}
+.field input{width:100%;background:#0a0e14;border:1px solid rgba(255,255,255,0.08);border-radius:7px;padding:10px 12px;color:#e0e6ed;font-size:14px;font-family:'Share Tech Mono',monospace;outline:none}
+.field input:focus{border-color:rgba(0,230,118,0.3)}
+.total-row{display:flex;justify-content:space-between;font-size:12px;color:#6b7a8d;margin-bottom:12px;padding:8px 10px;background:#0a0e14;border-radius:6px}
+.trade-btn{width:100%;padding:13px;border-radius:8px;border:none;cursor:pointer;font-size:15px;font-weight:600;font-family:'Barlow',sans-serif}
+.tbuy{background:#00e676;color:#000}
+.tsell{background:#ff4d4d;color:#fff}
+
+/* PORTFOLIO */
+.port-box{background:#0d1117;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;margin-bottom:16px}
+.pos{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.pos:last-child{border-bottom:none}
+.pos-sym{font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:500}
+.pos-amt{font-size:11px;color:#6b7a8d;margin-top:2px}
+.pos-val{font-family:'Share Tech Mono',monospace;font-size:13px;text-align:right}
+.pos-pnl{font-size:11px;text-align:right;margin-top:2px}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(120px);background:#0d1117;border:1px solid rgba(0,230,118,0.4);border-radius:10px;padding:12px 20px;font-size:13px;z-index:999;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.err{border-color:rgba(255,77,77,0.4);color:#ff4d4d}
+
+@media(min-width:768px){
+  .main{display:grid;grid-template-columns:1fr 320px;gap:16px;padding:16px 20px}
+  .coins{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">CRYPTEX</div>
+  <div class="nav-right">
+    <span class="nav-user">{{ username }}</span>
+    {% if rolle != 'user' %}<a href="/admin" class="btn">Admin</a>{% endif %}
+    <a href="/logout" class="btn">Logout</a>
+  </div>
+</nav>
+
+<div class="konto-bar">
+  <div class="kb"><div class="kb-l">CASH</div><div class="kb-v up" id="k-cash">—</div></div>
+  <div class="kb"><div class="kb-l">DEPOT</div><div class="kb-v" id="k-depot">—</div></div>
+  <div class="kb"><div class="kb-l">GESAMT</div><div class="kb-v" id="k-gesamt">—</div></div>
+</div>
+
+<div class="main">
+  <div>
+    <div class="sec-title">MARKT — Coin auswählen</div>
+    <div class="coins" id="coins"></div>
+
+    <div class="chart-box" id="chartBox">
+      <div class="chart-head">
+        <div><div class="chart-name" id="c-name">—</div></div>
+        <div><div class="chart-price" id="c-price">—</div><div class="chart-chg" id="c-chg">—</div></div>
+      </div>
+      <div class="chart-wrap"><canvas id="mainChart"></canvas></div>
+      <div class="ba-grid">
+        <div class="ba-box ba-bid">
+          <div class="ba-l">GELDKURS (BID)</div>
+          <div class="ba-p bid" id="c-bid">—</div>
+          <div class="ba-hint">Du verkaufst hier</div>
+        </div>
+        <div class="ba-box ba-ask">
+          <div class="ba-l">BRIEFKURS (ASK)</div>
+          <div class="ba-p ask" id="c-ask">—</div>
+          <div class="ba-hint">Du kaufst hier</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trade-box" id="tradeBox">
+      <div class="dir-tabs">
+        <div class="dir buy-on" id="dir-buy" onclick="setDir('kauf')">KAUFEN</div>
+        <div class="dir" id="dir-sell" onclick="setDir('verkauf')">VERKAUFEN</div>
+      </div>
+      <div class="field">
+        <label>MENGE (<span id="f-coin">BTC</span>)</label>
+        <input type="number" id="f-menge" placeholder="0.00000" min="0" step="any" inputmode="decimal" oninput="calcTotal()">
+      </div>
+      <div class="total-row">
+        <span>Gesamt</span>
+        <span id="f-total" style="font-family:'Share Tech Mono',monospace">$0.00</span>
+      </div>
+      <button class="trade-btn tbuy" id="trade-btn" onclick="doTrade()">KAUFEN</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="port-box">
+      <div class="sec-title">MEIN DEPOT</div>
+      <div id="depot"><div style="font-size:12px;color:#4a5568;text-align:center;padding:12px">Keine Positionen</div></div>
+    </div>
+    <div class="port-box">
+      <div class="sec-title">LETZTE TRADES</div>
+      <div id="trade-hist"><div style="font-size:12px;color:#4a5568;text-align:center;padding:12px">Keine Trades</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const socket = io();
+let markt = {};
+let sel = null;
+let dir = 'kauf';
+let chart = null;
+let minis = {};
+
+function fp(n){
+  if(!n&&n!==0)return '$-';
+  if(n>=1000)return '$'+n.toLocaleString('de-CH',{maximumFractionDigits:0});
+  if(n>=1)return '$'+n.toFixed(2);
+  return '$'+n.toFixed(4);
+}
+
+function toast(msg,err=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show'+(err?' err':'');
+  setTimeout(()=>t.className='toast',3000);
+}
+
+socket.on('markt',d=>{markt=d;renderCoins();if(sel)updateChart();});
+socket.on('konto_update',()=>loadKonto());
+
+function renderCoins(){
+  document.getElementById('coins').innerHTML=Object.entries(markt).map(([sym,m])=>`
+    <div class="coin ${sym===sel?'active':''}" onclick="selectCoin('${sym}')">
+      <div class="coin-top">
+        <div><div class="coin-sym">${sym}</div><div class="coin-name">${m.name}</div></div>
+        <div><div class="coin-price">${fp(m.preis)}</div><div class="coin-chg ${m.chg>=0?'up':'dn'}">${m.chg>=0?'+':''}${m.chg.toFixed(2)}%</div></div>
+      </div>
+      <div class="coin-ba"><span class="bid">B ${fp(m.bid)}</span><span class="ask">A ${fp(m.ask)}</span></div>
+      <div class="mini"><canvas id="mini_${sym}"></canvas></div>
+    </div>`).join('');
+
+  Object.entries(markt).forEach(([sym,m])=>{
+    const c=document.getElementById('mini_'+sym);
+    if(!c)return;
+    if(minis[sym])minis[sym].destroy();
+    const color=m.chg>=0?'#00e676':'#ff4d4d';
+    minis[sym]=new Chart(c,{type:'line',data:{labels:m.history.map((_,i)=>i),datasets:[{data:m.history,borderColor:color,borderWidth:1.5,pointRadius:0,tension:0.3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}},animation:false}});
+  });
+}
+
+function selectCoin(sym){
+  sel=sym;
+  document.getElementById('f-coin').textContent=sym;
+  document.getElementById('chartBox').className='chart-box show';
+  document.getElementById('tradeBox').className='trade-box show';
+  renderCoins();
+  updateChart();
+  initChart();
+  calcTotal();
+  document.getElementById('chartBox').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function updateChart(){
+  const m=markt[sel];if(!m)return;
+  document.getElementById('c-name').textContent=sel+' — '+m.name;
+  document.getElementById('c-price').textContent=fp(m.preis);
+  const chgEl=document.getElementById('c-chg');
+  chgEl.textContent=(m.chg>=0?'+':'')+m.chg.toFixed(2)+'%';
+  chgEl.style.color=m.chg>=0?'#00e676':'#ff4d4d';
+  document.getElementById('c-bid').textContent=fp(m.bid);
+  document.getElementById('c-ask').textContent=fp(m.ask);
+  if(chart){
+    chart.data.labels=m.history.map((_,i)=>i);
+    chart.data.datasets[0].data=m.history;
+    const color=m.chg>=0?'#00e676':'#ff4d4d';
+    chart.data.datasets[0].borderColor=color;
+    chart.data.datasets[0].backgroundColor=color+'0d';
+    chart.update('none');
+  }
+}
+
+function initChart(){
+  if(chart)chart.destroy();
+  const m=markt[sel];if(!m)return;
+  const color=m.chg>=0?'#00e676':'#ff4d4d';
+  chart=new Chart(document.getElementById('mainChart'),{type:'line',data:{labels:m.history.map((_,i)=>i),datasets:[{data:m.history,borderColor:color,backgroundColor:color+'0d',borderWidth:2,pointRadius:0,tension:0.3,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:true,position:'right',ticks:{color:'#4a5568',font:{size:9},callback:v=>fp(v)},grid:{color:'rgba(255,255,255,0.04)'}}},animation:{duration:200}}});
+}
+
+function setDir(d){
+  dir=d;
+  document.getElementById('dir-buy').className='dir'+(d==='kauf'?' buy-on':'');
+  document.getElementById('dir-sell').className='dir'+(d==='verkauf'?' sell-on':'');
+  const btn=document.getElementById('trade-btn');
+  btn.className='trade-btn '+(d==='kauf'?'tbuy':'tsell');
+  btn.textContent=d==='kauf'?'KAUFEN':'VERKAUFEN';
+  calcTotal();
+}
+
+function calcTotal(){
+  if(!sel||!markt[sel])return;
+  const m=markt[sel];
+  const menge=parseFloat(document.getElementById('f-menge').value)||0;
+  const preis=dir==='kauf'?m.ask:m.bid;
+  document.getElementById('f-total').textContent=fp(menge*preis);
+}
+
+async function doTrade(){
+  if(!sel){toast('Coin auswählen!',true);return;}
+  const menge=parseFloat(document.getElementById('f-menge').value);
+  if(!menge||menge<=0){toast('Menge eingeben!',true);return;}
+  const url=dir==='kauf'?'/api/kaufen':'/api/verkaufen';
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({coin:sel,menge})});
+  const d=await r.json();
+  if(d.ok){
+    toast(dir==='kauf'?`Gekauft! Kosten: ${fp(d.kosten)}`:`Verkauft! Erlös: ${fp(d.erloes)}`);
+    document.getElementById('f-menge').value='';
+    loadKonto();
+    loadTrades();
+  }else{
+    toast(d.error||'Fehler',true);
+  }
+}
+
+async function loadKonto(){
+  const r=await fetch('/api/konto');
+  const d=await r.json();
+  document.getElementById('k-cash').textContent=fp(d.cash);
+  document.getElementById('k-depot').textContent=fp(d.depot_wert);
+  document.getElementById('k-gesamt').textContent=fp(d.gesamt);
+  const el=document.getElementById('depot');
+  if(!d.depot||d.depot.length===0){
+    el.innerHTML='<div style="font-size:12px;color:#4a5568;text-align:center;padding:12px">Keine Positionen</div>';
+  }else{
+    el.innerHTML=d.depot.map(p=>`<div class="pos">
+      <div><div class="pos-sym">${p.coin}</div><div class="pos-amt">${p.menge.toFixed(6)}</div></div>
+      <div><div class="pos-val">${fp(p.wert)}</div><div class="pos-pnl ${p.gewinn>=0?'up':'dn'}">${p.gewinn>=0?'+':''}${fp(p.gewinn)}</div></div>
+    </div>`).join('');
+  }
+}
+
+async function loadTrades(){
+  const r=await fetch('/api/trades');
+  const d=await r.json();
+  const el=document.getElementById('trade-hist');
+  if(!d||d.length===0){
+    el.innerHTML='<div style="font-size:12px;color:#4a5568;text-align:center;padding:12px">Keine Trades</div>';
+    return;
+  }
+  el.innerHTML=d.slice(0,10).map(t=>`<div class="pos">
+    <div><div class="pos-sym ${t.richtung==='kauf'?'ask':'bid'}">${t.richtung.toUpperCase()} ${t.coin}</div><div class="pos-amt">${t.menge.toFixed(6)}</div></div>
+    <div><div class="pos-val">${fp(t.menge*t.preis)}</div><div class="pos-pnl" style="color:#4a5568">${t.zeitpunkt.split('T')[0]||t.zeitpunkt.split(' ')[0]}</div></div>
+  </div>`).join('');
+}
+
+fetch('/api/markt').then(r=>r.json()).then(d=>{markt=d;renderCoins();loadKonto();loadTrades();});
+setInterval(()=>{loadKonto();loadTrades();},30000);
+</script>
+</body>
+</html>
